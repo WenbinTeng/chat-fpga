@@ -305,10 +305,29 @@ ResidualAttnBlock::ResidualAttnBlock(int n_attn_heads, int d_embed, int d_mlp, i
 {
 }
 
+// Tensor ResidualAttnBlock::forward(const Tensor &inp)
+// {
+//     Tensor attn_out = inp_res.forward(inp, attn.forward(attn_ln.forward(inp)));
+//     Tensor out = attn_res.forward(attn_out, mlp_proj.forward(gelu.forward(mlp_fc.forward(mlp_ln.forward(attn_out)))));
+//     return out;
+// }
+
 Tensor ResidualAttnBlock::forward(const Tensor &inp)
 {
-    Tensor attn_out = inp_res.forward(inp, attn.forward(attn_ln.forward(inp)));
-    Tensor out = attn_res.forward(attn_out, mlp_proj.forward(gelu.forward(mlp_fc.forward(mlp_ln.forward(attn_out)))));
+    Tensor attn_out;
+
+    attn_out = attn_ln.forward(inp);
+    attn_out = attn.forward(attn_out); // TODO: replace with fpga impl
+    attn_out = inp_res.forward(inp, attn_out);
+
+    Tensor ffn_out;
+    ffn_out = mlp_ln.forward(attn_out);
+    ffn_out = gelu.forward(mlp_fc.forward(ffn_out)); // TODO: replace with fpga impl
+    ffn_out = mlp_proj.forward(ffn_out);
+
+    Tensor out;
+    out = attn_res.forward(attn_out, ffn_out);
+    
     return out;
 }
 

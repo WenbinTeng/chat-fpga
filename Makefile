@@ -21,7 +21,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(MODEL):
-	mkdir -p model
+	mkdir -p models
 	curl $(MODEL_URL) -o $(MODEL)
 
 $(TARGET): $(OBJECTS)
