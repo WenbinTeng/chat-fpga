@@ -1,4 +1,7 @@
 #include "FpgaConfig.hpp"
+#include <cassert>
+#include <iostream>
+#include <unistd.h>
 
 FpgaConfig::FpgaConfig() {}
 
@@ -8,58 +11,21 @@ constexpr size_t RW_MAX_SIZE = 0x7ffff000;
 const char *C2H[4] = {"/dev/xdma0_c2h_0","/dev/xdma0_c2h_1","/dev/xdma0_c2h_2","/dev/xdma0_c2h_3"};
 const char *H2C[4] = {"/dev/xdma0_h2c_0","/dev/xdma0_h2c_1","/dev/xdma0_h2c_2","/dev/xdma0_h2c_3"};
 
-ssize_t dmaRead(int fd, char *buffer, uint64_t size, uint64_t base) {
-    ssize_t rc;
-    uint64_t count = 0;
-    char *buf = buffer;
-    off_t offset = base;
-
-    while (count < size) {
-        uint64_t bytes = size - count;
-        if (bytes > RW_MAX_SIZE) {
-            bytes = RW_MAX_SIZE;
-        }
-        if (offset) {
-            rc = lseek(fd, offset, SEEK_SET);
-            assert(rc == offset);
-        }
-        /* read data from file into memory buffer */
-        rc = read(fd, buf, bytes);
-        assert(rc >= 0);
-        count += rc;
-        buf += rc;
-        offset += rc;
-    }
-
-    return count;
+int dmaRead(int fd, char *buffer, uint64_t size, uint64_t addr) {
+    if (addr != lseek(fd, addr, SEEK_SET))
+        return -1;
+    if (size != read(fd, buffer, size))
+        return -1;
+    return 0;
 }
 
-ssize_t dmaWrite(int fd, char *buffer, uint64_t size, uint64_t base) {
-    ssize_t rc;
-    uint64_t count = 0;
-    char *buf = buffer;
-    off_t offset = base;
-
-    while (count < size) {
-        uint64_t bytes = size - count;
-        if (bytes > RW_MAX_SIZE) {
-            bytes = RW_MAX_SIZE;
-        }
-        if (offset) {
-            rc = lseek(fd, offset, SEEK_SET);
-            assert(rc == offset);
-        }
-        /* write data to file from memory buffer */
-        rc = write(fd, buf, bytes);
-        assert(rc >= 0);
-        count += rc;
-        buf += rc;
-        if (offset) {
-            offset += rc;
-        }
-    }
-
-    return count;
+int dmaWrite(int fd, char *buffer, uint64_t size, uint64_t addr) {
+    std::cout << std::hex  << "addr: " << addr << std::dec << " size: " << size << std::endl;
+    if (addr != lseek(fd, addr, SEEK_SET))
+        return -1;
+    if (size != write(fd, buffer, size))
+        return -1;
+    return 0;
 }
 
 void FpgaConfig::readFpga(void *varPtr, uint64_t size, uint64_t addr) {
@@ -73,7 +39,8 @@ void FpgaConfig::readFpga(void *varPtr, uint64_t size, uint64_t addr) {
     posix_memalign(reinterpret_cast<void **>(&buffer), pageSize, size + pageSize);
     assert(buffer != nullptr);
 
-    dmaRead(fpgaFd, buffer, size, addr);
+    int r = dmaRead(fpgaFd, buffer, size, addr);
+    assert(r == 0);
     memcpy(varPtr, buffer, size);
     close(fpgaFd);
     free(buffer);
@@ -91,7 +58,8 @@ void FpgaConfig::writeFpga(void *varPtr, uint64_t size, uint64_t addr) {
     assert(buffer != nullptr);
 
     memcpy(buffer, varPtr, size);
-    dmaWrite(fpgaFd, buffer, size, addr);
+    int r = dmaWrite(fpgaFd, buffer, size, addr);
+    assert(r == 0);
     close(fpgaFd);
     free(buffer);
 }

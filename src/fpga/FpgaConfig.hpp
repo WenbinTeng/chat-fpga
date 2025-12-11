@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <string>
 
 #include <fcntl.h>
@@ -14,9 +15,9 @@ class FpgaConfig {
   public:
     FpgaConfig();
     ~FpgaConfig();
-    void readFpga(void *varPtr, uint64_t size, uint64_t addr); /* Read from FPGA address space */
-    void writeFpga(void *varPtr, uint64_t size, uint64_t addr); /* Write to FPGA address space */
-    void programFpga(const char *binPtr, uint64_t size, uint64_t addr); /* Write to FPGA ICAP */
+    static void readFpga(void *varPtr, uint64_t size, uint64_t addr); /* Read from FPGA address space */
+    static void writeFpga(void *varPtr, uint64_t size, uint64_t addr); /* Write to FPGA address space */
+    static void programFpga(const char *binPtr, uint64_t size, uint64_t addr); /* Write to FPGA ICAP */
 };
 
 #endif
