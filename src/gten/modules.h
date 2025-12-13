@@ -4,6 +4,8 @@
 #include <iostream>
 
 #include "tensor.h"
+#include "../fpga/FpgaConfig.hpp"
+#include "../fpga/XHlsIpConfig.hpp"
 
 namespace gten {
 

@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
-
 #include <fcntl.h>
 #include <unistd.h>
 

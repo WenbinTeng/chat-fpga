@@ -1,7 +1,4 @@
 #include "FpgaConfig.hpp"
-#include <cassert>
-#include <iostream>
-#include <unistd.h>
 
 FpgaConfig::FpgaConfig() {}
 
@@ -20,7 +17,6 @@ int dmaRead(int fd, char *buffer, uint64_t size, uint64_t addr) {
 }
 
 int dmaWrite(int fd, char *buffer, uint64_t size, uint64_t addr) {
-    std::cout << std::hex  << "addr: " << addr << std::dec << " size: " << size << std::endl;
     if (addr != lseek(fd, addr, SEEK_SET))
         return -1;
     if (size != write(fd, buffer, size))

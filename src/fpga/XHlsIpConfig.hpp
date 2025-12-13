@@ -1,5 +1,5 @@
-#ifndef __XHLS_IP_CONFIG__
-#define __XHLS_IP_CONFIG__
+#ifndef __XHLS_IP_CONFIG_HPP__
+#define __XHLS_IP_CONFIG_HPP__
 
 #include <cassert>
 
@@ -64,7 +64,7 @@
 #define XHLS_IP_CONTROL_BITS_AP_RETURN 32
 #define XHLS_IP_CONTROL_ADDR_INPUT_DATA 0x18
 
-struct XhlsIp {
+struct XHlsIp {
   uint64_t controlBaseAddr;
 };
 
@@ -74,12 +74,12 @@ class XHlsIpConfig {
   public:
     XHlsIpConfig();
     ~XHlsIpConfig();
-    void XHlsIpStart(XhlsIp *ipInstPtr);
-    uint32_t XHlsIsDone(XhlsIp *ipInstPtr);
-    uint32_t XHlsIsIdle(XhlsIp *ipInstPtr);
-    uint32_t XHlsIsReady(XhlsIp *ipInstPtr);
-    void XHlsIpSetParams(XhlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize);
-    void XHlsIpGetParams(XhlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize);
+    static void start(XHlsIp *ipInstPtr);
+    static uint32_t isDone(XHlsIp *ipInstPtr);
+    static uint32_t isIdle(XHlsIp *ipInstPtr);
+    static uint32_t isReady(XHlsIp *ipInstPtr);
+    static void setParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize);
+    static void getParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize);
 };
 
 #endif

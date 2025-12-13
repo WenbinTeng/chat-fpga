@@ -87,6 +87,8 @@ public:
         return numel_ * itemsize();
     }
 
+    std::uint64_t fpga_addr_;
+
 private:
     // shared ptr allows us to share the same data across many tensors.
     std::shared_ptr<uint8_t[]> data_;

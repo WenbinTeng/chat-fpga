@@ -4,7 +4,7 @@ XHlsIpConfig::XHlsIpConfig() {}
 
 XHlsIpConfig::~XHlsIpConfig() {}
 
-void XHlsIpConfig::XHlsIpStart(XhlsIp *ipInstPtr) {
+void XHlsIpConfig::start(XHlsIp *ipInstPtr) {
     assert(ipInstPtr != nullptr);
     
     uint32_t data;
@@ -14,7 +14,7 @@ void XHlsIpConfig::XHlsIpStart(XhlsIp *ipInstPtr) {
     FpgaConfig::writeFpga(reinterpret_cast<void*>(&data), 4, ipInstPtr->controlBaseAddr + XHLS_IP_CONTROL_ADDR_AP_CTRL);
 }
 
-uint32_t XHlsIpConfig::XHlsIsDone(XhlsIp *ipInstPtr) {
+uint32_t XHlsIpConfig::isDone(XHlsIp *ipInstPtr) {
     assert(ipInstPtr != nullptr);
 
     uint32_t data;
@@ -23,7 +23,7 @@ uint32_t XHlsIpConfig::XHlsIsDone(XhlsIp *ipInstPtr) {
     return (data >> 1) & 0x01;
 }
 
-uint32_t XHlsIpConfig::XHlsIsIdle(XhlsIp *ipInstPtr) {
+uint32_t XHlsIpConfig::isIdle(XHlsIp *ipInstPtr) {
     assert(ipInstPtr != nullptr);
 
     uint32_t data;
@@ -32,7 +32,7 @@ uint32_t XHlsIpConfig::XHlsIsIdle(XhlsIp *ipInstPtr) {
     return (data >> 2) & 0x01;
 }
 
-uint32_t XHlsIpConfig::XHlsIsReady(XhlsIp *ipInstPtr) {
+uint32_t XHlsIpConfig::isReady(XHlsIp *ipInstPtr) {
     assert(ipInstPtr != nullptr);
     
     uint32_t data;
@@ -41,7 +41,7 @@ uint32_t XHlsIpConfig::XHlsIsReady(XhlsIp *ipInstPtr) {
     return (data >> 3) & 0x01;
 }
 
-void XHlsIpConfig::XHlsIpSetParams(XhlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize) {
+void XHlsIpConfig::setParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize) {
     assert(ipInstPtr != nullptr);
     assert(paramsPtr != nullptr);
     assert(paramsSize > 0);
@@ -49,7 +49,7 @@ void XHlsIpConfig::XHlsIpSetParams(XhlsIp *ipInstPtr, size_t offset, void *param
     FpgaConfig::writeFpga(paramsPtr, paramsSize, ipInstPtr->controlBaseAddr + offset);
 }
 
-void XHlsIpConfig::XHlsIpGetParams(XhlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize) {
+void XHlsIpConfig::getParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize) {
     assert(ipInstPtr != nullptr);
     assert(paramsPtr != nullptr);
     assert(paramsSize > 0);

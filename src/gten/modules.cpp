@@ -1,7 +1,13 @@
+#include <bits/stdint-uintn.h>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
+#include <ostream>
 #include <thread>
+#include <unistd.h>
 
+#include "gten_types.h"
 #include "modules.h"
 #include "module_ops.h"
 
@@ -305,13 +311,23 @@ ResidualAttnBlock::ResidualAttnBlock(int n_attn_heads, int d_embed, int d_mlp, i
 {
 }
 
-// Tensor ResidualAttnBlock::forward(const Tensor &inp)
-// {
-//     Tensor attn_out = inp_res.forward(inp, attn.forward(attn_ln.forward(inp)));
-//     Tensor out = attn_res.forward(attn_out, mlp_proj.forward(gelu.forward(mlp_fc.forward(mlp_ln.forward(attn_out)))));
-//     return out;
-// }
+#define FPGA 1
 
+#if (FPGA==0)
+// ---------------------------------------- 
+//  CPU inference 
+// ----------------------------------------
+Tensor ResidualAttnBlock::forward(const Tensor &inp)
+{
+    Tensor attn_out = inp_res.forward(inp, attn.forward(attn_ln.forward(inp)));
+    Tensor out = attn_res.forward(attn_out, mlp_proj.forward(gelu.forward(mlp_fc.forward(mlp_ln.forward(attn_out)))));
+    return out;
+}
+
+#else
+// ---------------------------------------- 
+//  FPGA inference 
+// ---------------------------------------- 
 Tensor ResidualAttnBlock::forward(const Tensor &inp)
 {
     Tensor attn_out;
@@ -322,13 +338,54 @@ Tensor ResidualAttnBlock::forward(const Tensor &inp)
 
     Tensor ffn_out;
     ffn_out = mlp_ln.forward(attn_out);
-    ffn_out = gelu.forward(mlp_fc.forward(ffn_out)); // TODO: replace with fpga impl
-    ffn_out = mlp_proj.forward(ffn_out);
+
+    const uint64_t S_AXILITE_ADDR          = 0x1'0000'0000;
+    const size_t INPUT_CTRL_OFFSET         = 0x10;
+    const size_t FC1_BIAS_CTRL_OFFSET      = 0x1c;
+    const size_t FC1_WEIGHT_CTRL_OFFSET    = 0x28;
+    const size_t FC2_BIAS_CTRL_OFFSET      = 0x34;
+    const size_t FC2_WEIGHT_CTRL_OFFSET    = 0x40;
+    const size_t OUTPUT_CTRL_OFFSET        = 0x4c;
+
+    static uint64_t INPUT_BUFF_ADDR        = 0x8000'0000;
+    static uint64_t OUTPUT_BUFF_ADDR       = 0x8002'0000;
+    static size_t BUFF_SIZE                = 64*1024*2;
+
+    auto input_tensor      = ffn_out;
+    auto fc1_bias_tensor   = this->mlp_fc.bias;
+    auto fc1_weight_tensor = this->mlp_fc.weight;
+    auto fc2_bias_tensor   = this->mlp_proj.bias;
+    auto fc2_weight_tensor = this->mlp_proj.weight;
+    auto output_tensor     = ffn_out;
+
+    // write data
+    FpgaConfig::writeFpga(ffn_out.data_ptr<void>(), ffn_out.nbytes(), INPUT_BUFF_ADDR);
+
+    // write data address to controll register
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(&INPUT_BUFF_ADDR),            8, S_AXILITE_ADDR + INPUT_CTRL_OFFSET);
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(&mlp_fc.bias.fpga_addr_),     8, S_AXILITE_ADDR + FC1_BIAS_CTRL_OFFSET);
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(&mlp_fc.weight.fpga_addr_),   8, S_AXILITE_ADDR + FC1_WEIGHT_CTRL_OFFSET);
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(&mlp_proj.bias.fpga_addr_),   8, S_AXILITE_ADDR + FC2_BIAS_CTRL_OFFSET);
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(&mlp_proj.weight.fpga_addr_), 8, S_AXILITE_ADDR + FC2_WEIGHT_CTRL_OFFSET);
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(&OUTPUT_BUFF_ADDR),           8, S_AXILITE_ADDR + OUTPUT_CTRL_OFFSET);
+
+    // start ip
+    XHlsIp inst({S_AXILITE_ADDR});
+    XHlsIpConfig::start(&inst);
+
+    // wait for finish
+    while (!XHlsIpConfig::isReady(&inst)) {
+        usleep(100);
+    }
+
+    // read results
+    FpgaConfig::readFpga(output_tensor.data_ptr<void>(), output_tensor.nbytes(), OUTPUT_BUFF_ADDR);
 
     Tensor out;
-    out = attn_res.forward(attn_out, ffn_out);
-    
+    out = attn_res.forward(attn_out, output_tensor);
+
     return out;
 }
+#endif
 
 } // namespace gten

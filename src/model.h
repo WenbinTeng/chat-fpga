@@ -1,9 +1,16 @@
+#include <cassert>
+#include <cstdint>
+#include <iostream>
+#include <iterator>
+#include <ostream>
 #include <random>
 
-#include "gten/gten.h"
+#include "fpga/FpgaConfig.hpp"
+#include "gten/tensor.h"
+#include "gten/modules.h"
 #include "tokenizer.h"
 
-
+using namespace std;
 using namespace gten;
 
 
@@ -40,7 +47,7 @@ struct InferenceOptions {
 
     int calculate_max_ctx_size(int num_prompt_tokens) const {
         // max ctx_size for gpt2 models.
-        int max_ctx_size = 1024;
+        int max_ctx_size = 64;
 
         if (num_prompt_tokens >= max_ctx_size) {
             // Prompt length is too large, quit. Technically, we can allow generation of
@@ -55,16 +62,16 @@ struct InferenceOptions {
         // Round of to the nearest power of two.
         if (ctx_size < 32)
             return 32;
-        else if (ctx_size < 64)
-            return 64;
-        else if (ctx_size < 128)
-            return 128;
-        else if (ctx_size < 256)
-            return 256;
-        else if (ctx_size < 512)
-            return 512;
-        else if (ctx_size < 768)
-            return 768;
+        // else if (ctx_size < 64)
+        //     return 64;
+        // else if (ctx_size < 128)
+        //     return 128;
+        // else if (ctx_size < 256)
+        //     return 256;
+        // else if (ctx_size < 512)
+        //     return 512;
+        // else if (ctx_size < 768)
+        //     return 768;
         else
             return max_ctx_size;
     }
@@ -425,9 +432,46 @@ static inline void read_into_weight(
     fin.read(tensor.data_ptr<char>(), weight_payload_size);
 }
 
+class AddrAllocator {
+  private:
+    uint64_t curr_;
+    uint64_t limit_;
+    uint64_t align(uint64_t x, uint64_t align=64) {
+        if (align == 0)
+            return x;
+        return (x + align - 1) / align * align;
+    }
+  public:
+    AddrAllocator(uint64_t base, uint64_t limit) : curr_(base), limit_(limit) {}
+    ~AddrAllocator() {}
+
+    uint64_t allocate(uint64_t n_bytes) {
+        if (n_bytes == 0)
+            return 0;
+        uint64_t aligned_curr = align(curr_);
+        uint64_t aligned_size = align(n_bytes);
+        uint64_t next = aligned_curr + aligned_size;
+
+        curr_ = next;
+        assert(curr_ < limit_);
+
+        // std::cout << "Allocated addr: " << std::hex << aligned_curr << " " << curr_;
+        // std::cout << ", size: " << std::hex << n_bytes << " " << aligned_size << std::endl;
+
+        return aligned_curr;
+    }
+};
+
 void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
 {
     Timer timer{&time_load_ms_};
+
+    // Init buffers for input tokens
+    auto zeros = new Float16[1][64][1024];
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(zeros), 2*64*1024, 0x8000'0000);
+
+    // Address allocator
+    AddrAllocator a(0, 0x1'0000'0000);
 
     // WTE
     read_layer_header(checkpoint);
@@ -472,10 +516,20 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.mlp_fc.weight);
         read_into_weight(checkpoint, block.mlp_fc.bias);
 
+        block.mlp_fc.weight.fpga_addr_ = a.allocate(block.mlp_fc.weight.nbytes());
+        block.mlp_fc.bias.fpga_addr_ = a.allocate(block.mlp_fc.bias.nbytes());
+        FpgaConfig::writeFpga(block.mlp_fc.weight.data_ptr<void>(), block.mlp_fc.weight.nbytes(), block.mlp_fc.weight.fpga_addr_);
+        FpgaConfig::writeFpga(block.mlp_fc.bias.data_ptr<void>(), block.mlp_fc.bias.nbytes(), block.mlp_fc.bias.fpga_addr_);
+
         // MLP out projection layer.
         read_layer_header(checkpoint);
         read_into_weight(checkpoint, block.mlp_proj.weight);
         read_into_weight(checkpoint, block.mlp_proj.bias);
+
+        block.mlp_proj.weight.fpga_addr_ = a.allocate(block.mlp_proj.weight.nbytes());
+        block.mlp_proj.bias.fpga_addr_ = a.allocate(block.mlp_proj.bias.nbytes());
+        FpgaConfig::writeFpga(block.mlp_proj.weight.data_ptr<void>(), block.mlp_proj.weight.nbytes(), block.mlp_proj.weight.fpga_addr_);
+        FpgaConfig::writeFpga(block.mlp_proj.bias.data_ptr<void>(), block.mlp_proj.bias.nbytes(), block.mlp_proj.bias.fpga_addr_);
 
         // Attention layernorm.
         read_layer_header(checkpoint);
