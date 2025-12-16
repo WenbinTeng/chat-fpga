@@ -466,9 +466,11 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
 {
     Timer timer{&time_load_ms_};
 
-    // Init buffers for input tokens
+#ifdef FPGA
+    // Init FPGA buffers for input tokens
     auto zeros = new Float16[1][64][1024];
     FpgaConfig::writeFpga(reinterpret_cast<void*>(zeros), 2*64*1024, 0x8000'0000);
+#endif
 
     // Address allocator
     AddrAllocator a(0, 0x1'0000'0000);
@@ -516,20 +518,26 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.mlp_fc.weight);
         read_into_weight(checkpoint, block.mlp_fc.bias);
 
+#ifdef FPGA
+        // Load MLP fully-connected layer to FPGA on-chip memory
         block.mlp_fc.weight.fpga_addr_ = a.allocate(block.mlp_fc.weight.nbytes());
         block.mlp_fc.bias.fpga_addr_ = a.allocate(block.mlp_fc.bias.nbytes());
         FpgaConfig::writeFpga(block.mlp_fc.weight.data_ptr<void>(), block.mlp_fc.weight.nbytes(), block.mlp_fc.weight.fpga_addr_);
         FpgaConfig::writeFpga(block.mlp_fc.bias.data_ptr<void>(), block.mlp_fc.bias.nbytes(), block.mlp_fc.bias.fpga_addr_);
+#endif
 
         // MLP out projection layer.
         read_layer_header(checkpoint);
         read_into_weight(checkpoint, block.mlp_proj.weight);
         read_into_weight(checkpoint, block.mlp_proj.bias);
 
+#ifdef FPGA
+        // Load MLP out projection layer to FPGA on-chip memorys
         block.mlp_proj.weight.fpga_addr_ = a.allocate(block.mlp_proj.weight.nbytes());
         block.mlp_proj.bias.fpga_addr_ = a.allocate(block.mlp_proj.bias.nbytes());
         FpgaConfig::writeFpga(block.mlp_proj.weight.data_ptr<void>(), block.mlp_proj.weight.nbytes(), block.mlp_proj.weight.fpga_addr_);
         FpgaConfig::writeFpga(block.mlp_proj.bias.data_ptr<void>(), block.mlp_proj.bias.nbytes(), block.mlp_proj.bias.fpga_addr_);
+#endif
 
         // Attention layernorm.
         read_layer_header(checkpoint);

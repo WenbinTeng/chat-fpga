@@ -1,4 +1,3 @@
-#include <bits/stdint-uintn.h>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -311,9 +310,7 @@ ResidualAttnBlock::ResidualAttnBlock(int n_attn_heads, int d_embed, int d_mlp, i
 {
 }
 
-#define FPGA 1
-
-#if (FPGA==0)
+#ifndef FPGA
 // ---------------------------------------- 
 //  CPU inference 
 // ----------------------------------------

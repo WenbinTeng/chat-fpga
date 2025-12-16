@@ -6,6 +6,7 @@
 #include "tensor.h"
 #include "../fpga/FpgaConfig.hpp"
 #include "../fpga/XHlsIpConfig.hpp"
+#define FPGA 1
 
 namespace gten {
 
