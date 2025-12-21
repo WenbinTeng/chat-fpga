@@ -336,41 +336,22 @@ Tensor ResidualAttnBlock::forward(const Tensor &inp)
     Tensor ffn_out;
     ffn_out = mlp_ln.forward(attn_out);
 
-    Timer timer(&exec_time_ms_);
+    auto t = new Timer(&exec_time_ms_);
 
-    uint64_t INPUT_BUFF_ADDR  = 0x8000'0000;
-    uint64_t OUTPUT_BUFF_ADDR = 0x8002'0000;
-
-    XHlsIp inst = {
-        .controlBaseAddr = 0x1'0000'0000
-    };
-
-    // transfer input data
-    FpgaConfig::writeFpga(ffn_out.data_ptr<void>(), ffn_out.nbytes(), INPUT_BUFF_ADDR);
-
-    // set controll registers
-    std::vector<uint64_t*> params({
-        &INPUT_BUFF_ADDR,
-        &mlp_fc.bias.fpga_addr_,
-        &mlp_fc.weight.fpga_addr_,
-        &mlp_proj.bias.fpga_addr_,
-        &mlp_proj.weight.fpga_addr_,
-        &OUTPUT_BUFF_ADDR
-    });
-    uint64_t offset = 0x10;
-    for (auto param : params) {
-        XHlsIpConfig::setParams(&inst, offset, param, 8);
-        offset += 0xc;
-    }
-
-    // execute HLS IP
-    XHlsIpConfig::start(&inst);
-    while (!XHlsIpConfig::isReady(&inst)) {
+    // Transfer input data
+    XHlsIpConfig::setInput(&ffn_ip_inst, ffn_out.data_ptr<void>(), ffn_out.nbytes());
+    // Set controll registers
+    XHlsIpConfig::setParams(&ffn_ip_inst);
+    // Execute HLS IP
+    XHlsIpConfig::start(&ffn_ip_inst);
+    // Wait for IP finish
+    while (!XHlsIpConfig::isReady(&ffn_ip_inst)) {
         usleep(1000);
     }
+    // Transfer output data
+    XHlsIpConfig::getOutput(&ffn_ip_inst, ffn_out.data_ptr<void>(), ffn_out.nbytes());
 
-    // transfer output data
-    FpgaConfig::readFpga(ffn_out.data_ptr<void>(), ffn_out.nbytes(), OUTPUT_BUFF_ADDR);
+    delete t;
 
     Tensor out;
     out = attn_res.forward(attn_out, ffn_out);

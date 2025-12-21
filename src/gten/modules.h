@@ -196,9 +196,10 @@ public:
                              mlp_ln.reset_acv_cache(); gelu.reset_acv_cache(); inp_res.reset_acv_cache(); attn_res.reset_acv_cache();}
     int64_t time() const noexcept { return exec_time_ms_; }
 
-#ifdef FPGA
+    #ifdef FPGA
+    void fpga_init();
     Tensor fpga_forward_mlp(Tensor &inp);
-#endif
+    #endif
 
 public:
     LayerNorm attn_ln;
@@ -210,6 +211,11 @@ public:
     Linear mlp_proj;
     Residual attn_res;
     int64_t exec_time_ms_{0};
+
+    #ifdef FPGA
+    XHlsIp attn_ip_inst;
+    XHlsIp ffn_ip_inst;
+    #endif
 };
 
 

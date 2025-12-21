@@ -42,18 +42,31 @@ uint32_t XHlsIpConfig::isReady(XHlsIp *ipInstPtr) {
     return (data >> 3) & 0x01;
 }
 
-void XHlsIpConfig::setParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize) {
+void XHlsIpConfig::setParams(XHlsIp *ipInstPtr) {
     assert(ipInstPtr != nullptr);
-    assert(paramsPtr != nullptr);
-    assert(paramsSize > 0);
 
-    FpgaConfig::writeFpga(paramsPtr, paramsSize, ipInstPtr->controlBaseAddr + offset);
+    uint64_t offset = 0x10;
+    for (auto param : ipInstPtr->params) {
+        assert(param != nullptr);
+        FpgaConfig::writeFpga(param, 8, ipInstPtr->controlBaseAddr + offset);
+        // std::cout << std::hex << *param << " " << ipInstPtr->controlBaseAddr + offset << std::endl;
+        offset += 0xc;
+    }
+    // std::cout << std::endl;
 }
 
-void XHlsIpConfig::getParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize) {
-    assert(ipInstPtr != nullptr);
-    assert(paramsPtr != nullptr);
-    assert(paramsSize > 0);
+void XHlsIpConfig::getParams(XHlsIp *ipInstPtr) {
 
-    FpgaConfig::readFpga(paramsPtr, paramsSize, ipInstPtr->controlBaseAddr + offset);
+}
+
+void XHlsIpConfig::setInput(XHlsIp *ipInstPtr, void *varPtr, size_t size) {
+    assert(ipInstPtr != nullptr);
+    uint64_t in_addr = *ipInstPtr->params.front();
+    FpgaConfig::writeFpga(varPtr, size, in_addr);
+}
+
+void XHlsIpConfig::getOutput(XHlsIp *ipInstPtr, void *varPtr, size_t size) {
+    assert(ipInstPtr != nullptr);
+    uint64_t out_addr = *ipInstPtr->params.back();
+    FpgaConfig::readFpga(varPtr, size, out_addr);
 }

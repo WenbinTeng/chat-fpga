@@ -68,6 +68,7 @@
 
 struct XHlsIp {
     uint64_t controlBaseAddr;
+    std::vector<uint64_t*> params; // input, params, output
 };
 
 class XHlsIpConfig {
@@ -80,8 +81,10 @@ class XHlsIpConfig {
     static uint32_t isDone(XHlsIp *ipInstPtr);
     static uint32_t isIdle(XHlsIp *ipInstPtr);
     static uint32_t isReady(XHlsIp *ipInstPtr);
-    static void setParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize);
-    static void getParams(XHlsIp *ipInstPtr, size_t offset, void *paramsPtr, uint64_t paramsSize);
+    static void setParams(XHlsIp *ipInstPtr);
+    static void getParams(XHlsIp *ipInstPtr);
+    static void setInput(XHlsIp *ipInstPtr, void *varPtr, size_t size);
+    static void getOutput(XHlsIp *ipInstPtr, void *varPtr, size_t size);
 };
 
 #endif
