@@ -1,4 +1,5 @@
 #include "XHlsIpConfig.hpp"
+#include <iostream>
 
 XHlsIpConfig::XHlsIpConfig() {}
 
@@ -8,7 +9,7 @@ void XHlsIpConfig::start(XHlsIp *ipInstPtr) {
     assert(ipInstPtr != nullptr);
     
     uint32_t data;
-    FpgaConfig::readFpga(reinterpret_cast<void*>(&data), 4,ipInstPtr->controlBaseAddr + XHLS_IP_CONTROL_ADDR_AP_CTRL);
+    FpgaConfig::readFpga(reinterpret_cast<void*>(&data), 4, ipInstPtr->controlBaseAddr + XHLS_IP_CONTROL_ADDR_AP_CTRL);
 
     data = (data & 0x80) | 0x01;
     FpgaConfig::writeFpga(reinterpret_cast<void*>(&data), 4, ipInstPtr->controlBaseAddr + XHLS_IP_CONTROL_ADDR_AP_CTRL);

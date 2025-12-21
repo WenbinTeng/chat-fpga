@@ -1,4 +1,5 @@
 #include "FpgaConfig.hpp"
+#include <iostream>
 
 FpgaConfig::FpgaConfig() {}
 

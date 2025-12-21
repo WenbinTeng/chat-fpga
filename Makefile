@@ -31,3 +31,5 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp
 
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET)
+
+reinstall: clean all

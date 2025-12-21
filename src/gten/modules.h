@@ -1,7 +1,7 @@
 #pragma once
-
 #include <chrono>
 #include <iostream>
+#include <vector>
 
 #include "tensor.h"
 #include "../fpga/FpgaConfig.hpp"
@@ -181,20 +181,24 @@ private:
     Tensor masked_qkv_attn(const Tensor &q, const Tensor &k, const Tensor &v);
 };
 
-
 class ResidualAttnBlock {
 public:
     ResidualAttnBlock(int n_attn_heads, int d_embed, int d_mlp, int max_ctx);
     Tensor forward(const Tensor& inp);
-    int64_t time_linear() const { return attn.time_linear() + mlp_fc.time() + mlp_proj.time(); }
-    int64_t time_proj() const { return mlp_fc.time() + mlp_proj.time(); }
-    int64_t time_attn_lin() const { return attn.time_linear(); }
+    // int64_t time_linear() const { return attn.time_linear() + time_proj(); }
     int64_t time_attn() const { return attn.time_attn(); }
+    int64_t time_attn_lin() const { return attn.time_linear(); }
+    int64_t time_proj() const { return exec_time_ms_; }
     int64_t time_ln() const { return attn_ln.time() + mlp_ln.time(); }
     int64_t time_gelu() const { return gelu.time(); }
     int64_t time_res() const { return inp_res.time() + attn_res.time(); }
     void reset_acv_cache() { attn.reset_acv_cache(); attn_ln.reset_acv_cache(); mlp_fc.reset_acv_cache(); mlp_proj.reset_acv_cache();
                              mlp_ln.reset_acv_cache(); gelu.reset_acv_cache(); inp_res.reset_acv_cache(); attn_res.reset_acv_cache();}
+    int64_t time() const noexcept { return exec_time_ms_; }
+
+#ifdef FPGA
+    Tensor fpga_forward_mlp(Tensor &inp);
+#endif
 
 public:
     LayerNorm attn_ln;
@@ -205,6 +209,7 @@ public:
     GELU gelu;
     Linear mlp_proj;
     Residual attn_res;
+    int64_t exec_time_ms_{0};
 };
 
 

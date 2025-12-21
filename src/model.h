@@ -315,27 +315,27 @@ void GPT2::show_performance(int64_t niter) const
     int64_t emb_time = wte_.emb_time();
     int64_t emb_proj_time = wte_.emb_proj_time();
     int64_t wpe_time = wpe_.time();
-    int64_t linear_time = 0;
-    int64_t mlpp_time = 0;
-    int64_t attn_lin = 0;
+    // int64_t linear_time = 0;
     int64_t attn_time = 0;
+    int64_t attn_lin_time = 0;
+    int64_t mlpp_time = 0;
     int64_t ln_time = 0;
     int64_t gelu_time = 0;
     int64_t res_time = 0;
     for (const auto &block : blocks_)
     {
-        linear_time += block.time_linear();
+        // linear_time += block.time_linear();
         attn_time += block.time_attn();
+        attn_lin_time += block.time_attn_lin();
+        mlpp_time += block.time_proj();
         ln_time += block.time_ln();
         gelu_time += block.time_gelu();
-        mlpp_time += block.time_proj();
-        attn_lin += block.time_attn_lin();
         res_time += block.time_res();
     }
     ln_time += ln_f_.time();
     res_time += res_.time();
-    int64_t total = emb_time + emb_proj_time + wpe_time + linear_time + attn_time
-                    + ln_time + gelu_time + res_time + time_sample_ms_;
+    int64_t total = emb_time + emb_proj_time + wpe_time + attn_time + attn_lin_time + mlpp_time 
+                  + ln_time + gelu_time + res_time + time_sample_ms_;
 
     std::cout << "\n";
     std::cout << "--------------------------------------\n";
@@ -344,10 +344,10 @@ void GPT2::show_performance(int64_t niter) const
     std::cout << "Embedding      | " << std::setw(3) << emb_time/niter        << "ms | " << emb_time        << "ms\n";
     std::cout << "Embedding proj | " << std::setw(3) << emb_proj_time/niter   << "ms | " << emb_proj_time   << "ms\n";
     std::cout << "Pos embedding  | " << std::setw(3) << wpe_time/niter        << "ms | " << wpe_time        << "ms\n";
-    std::cout << "Linear(qkv+mlp)| " << std::setw(3) << linear_time/niter     << "ms | " << linear_time     << "ms\n";
-    // std::cout << "Linear (qkv)   | " << std::setw(2) << attn_lin/niter     << "ms | " << attn_lin        << "ms\n";
-    // std::cout << "Linear (mlp)   | " << std::setw(2) << mlpp_time/niter    << "ms | " << mlpp_time       << "ms\n";
+    // std::cout << "Linear(qkv+mlp)| " << std::setw(3) << linear_time/niter     << "ms | " << linear_time     << "ms\n";
     std::cout << "Attention      | " << std::setw(3) << attn_time/niter       << "ms | " << attn_time       << "ms\n";
+    std::cout << "Linear (qkv)   | " << std::setw(2) << attn_lin_time/niter   << "ms | " << attn_lin_time   << "ms\n";
+    std::cout << "Linear (mlp)   | " << std::setw(2) << mlpp_time/niter       << "ms | " << mlpp_time       << "ms\n";
     std::cout << "Layer norm     | " << std::setw(3) << ln_time/niter         << "ms | " << ln_time         << "ms\n";
     std::cout << "Gelu           | " << std::setw(3) << gelu_time/niter       << "ms | " << gelu_time       << "ms\n";
     std::cout << "Residual       | " << std::setw(3) << res_time/niter        << "ms | " << res_time        << "ms\n";
@@ -543,6 +543,14 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_layer_header(checkpoint);
         read_into_weight(checkpoint, block.mlp_ln.weight);
         read_into_weight(checkpoint, block.mlp_ln.bias);
+
+#ifdef FPGA
+        // Load MLP out projection layer to FPGA on-chip memorys
+        block.mlp_ln.weight.fpga_addr_ = a.allocate(block.mlp_ln.weight.nbytes());
+        block.mlp_ln.bias.fpga_addr_ = a.allocate(block.mlp_ln.bias.nbytes());
+        FpgaConfig::writeFpga(block.mlp_ln.weight.data_ptr<void>(), block.mlp_ln.weight.nbytes(), block.mlp_ln.weight.fpga_addr_);
+        FpgaConfig::writeFpga(block.mlp_ln.bias.data_ptr<void>(), block.mlp_ln.bias.nbytes(), block.mlp_ln.bias.fpga_addr_);
+#endif
     }
     
     // Block output Layernorm.

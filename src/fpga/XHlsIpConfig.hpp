@@ -1,7 +1,9 @@
 #ifndef __XHLS_IP_CONFIG_HPP__
 #define __XHLS_IP_CONFIG_HPP__
 
+#include <bits/stdint-uintn.h>
 #include <cassert>
+#include <vector>
 
 #include "FpgaConfig.hpp"
 
@@ -65,7 +67,7 @@
 #define XHLS_IP_CONTROL_ADDR_INPUT_DATA 0x18
 
 struct XHlsIp {
-  uint64_t controlBaseAddr;
+    uint64_t controlBaseAddr;
 };
 
 class XHlsIpConfig {

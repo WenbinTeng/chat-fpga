@@ -128,6 +128,7 @@ int main(int argc, char const *argv[])
         options.prompt = "Below is an instruction that describes a task, paired with an input that provides further context."
                           " Write a response that appropriately completes the request.\n### Instruction: "
                           + prompt + "\n### Input: \n### Response: ";
+        // options.prompt = prompt;
 
         if (options.greedy)
             model.greedy_sample(options, tokenizer);

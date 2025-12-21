@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bits/stdint-intn.h>
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
@@ -85,6 +86,10 @@ public:
 
     size_t nbytes() const noexcept {
         return numel_ * itemsize();
+    }
+
+    int32_t* get_shape() {
+        return shape_;
     }
 
     std::uint64_t fpga_addr_;
