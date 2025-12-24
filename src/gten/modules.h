@@ -198,7 +198,8 @@ public:
 
     #ifdef FPGA
     void fpga_init();
-    Tensor fpga_forward_mlp(Tensor &inp);
+    Tensor fpga_forward_attn(const Tensor &inp);
+    Tensor fpga_forward_mlp(const Tensor &inp);
     #endif
 
 public:
@@ -213,7 +214,7 @@ public:
     int64_t exec_time_ms_{0};
 
     #ifdef FPGA
-    XHlsIp attn_ip_inst;
+    XHlsIp mhsa_ip_inst;
     XHlsIp ffn_ip_inst;
     #endif
 };

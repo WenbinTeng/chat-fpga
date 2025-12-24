@@ -1,4 +1,5 @@
 #include "tensor.h"
+#include "gten_types.h"
 
 #include <cmath>
 #include <cstring>
@@ -102,7 +103,7 @@ void Tensor::print_info() const noexcept {
 
 void Tensor::print_single(int32_t item_idx, int32_t col_idx, int32_t n_cols) const noexcept
 {
-    uint32_t max_cols = dtype_ == kInt32 ? 32 : 8;
+    uint32_t max_cols = (dtype_ == kInt32 || dtype_ == kInt8) ? 32 : 8;
     if (dtype_ == kFloat16)
         std::cout << std::fixed
                   << std::setprecision(4)
@@ -113,7 +114,9 @@ void Tensor::print_single(int32_t item_idx, int32_t col_idx, int32_t n_cols) con
                   << std::setprecision(4)
                   << std::setw(7)
                   << reinterpret_cast<Float32*>(data_.get())[item_idx];
-    else
+    else if (dtype_ == kInt8)
+        std::cout << static_cast<int32_t>(reinterpret_cast<Int8*>(data_.get())[item_idx]);
+    else // Int32
         std::cout << reinterpret_cast<Int32*>(data_.get())[item_idx];
     if (col_idx != n_cols - 1)
         std::cout << ", ";
@@ -129,6 +132,8 @@ void Tensor::print() const noexcept
         std::cout << "Numel=" << numel_ << "\nDtype=Float16\n[";
     else if (dtype_ == kFloat32)
         std::cout << "Numel=" << numel_ << "\nDtype=Float32\n[";
+    else if (dtype_ == kInt8)
+        std::cout << "Numel=" << numel_ << "\nDtype=Int8\n[";
     else
         std::cout << "Numel=" << numel_ << "\nDtype=Int32\n[";
 

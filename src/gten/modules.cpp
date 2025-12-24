@@ -10,6 +10,7 @@
 #include "gten_types.h"
 #include "modules.h"
 #include "module_ops.h"
+#include "tensor.h"
 
 
 #define GTEN_CHECK_DTYPE_EQUAL(inp_dtype, expected_dtype)     \
@@ -71,7 +72,6 @@ Tensor Embedding::forward(const Tensor& tokens)
 
     return emb_acv_;
 }
-
 
 Tensor Embedding::forward_proj(const Tensor &inp)
 {
@@ -148,7 +148,6 @@ Tensor LayerNorm::forward_impl(const Tensor &inp)
 
     return acv_;
 }
-
 
 GELU::GELU(int max_ctx, int d_out, bool cache_ctx_acv)
     : acv_{Tensor({max_ctx, d_out}, kFloat16)}, cache_acv_{cache_ctx_acv}
@@ -231,6 +230,15 @@ Tensor Linear::forward(const Tensor &inp)
 
 Tensor Linear::forward_impl(const Tensor& inp)
 {
+    Tensor a_fp = inp;
+    Tensor w_fp = weight;
+    if (inp.dtype() == kInt8) {
+        a_fp = ops::dequant_to_fp16(inp);
+    }
+    if (weight.dtype() == kInt8) {
+        w_fp = ops::dequant_to_fp16(weight);
+    }
+
     if (acv_cached_) {
         const int cache_row_offset = inp.size(0) - 1;
         ops::affine_proj_2d(inp, weight, bias, acv_, cache_row_offset);
@@ -246,7 +254,6 @@ Tensor Linear::forward_impl(const Tensor& inp)
 
     return acv_;
 }
-
 
 MultiHeadSelfAttn::MultiHeadSelfAttn(int n_head, int d_embed, int max_ctx)
     : query{Linear(d_embed, d_embed, max_ctx)},
@@ -272,7 +279,6 @@ Tensor MultiHeadSelfAttn::forward(const Tensor &inp)
     const Tensor out = qkv_proj.forward(qkv);
     return out;
 }
-
 
 Tensor MultiHeadSelfAttn::masked_qkv_attn(const Tensor &q, const Tensor &k, const Tensor &v)
 {
@@ -326,7 +332,40 @@ Tensor ResidualAttnBlock::forward(const Tensor &inp)
 // ---------------------------------------- 
 //  FPGA inference 
 // ---------------------------------------- 
-Tensor ResidualAttnBlock::forward(const Tensor &inp)
+
+Tensor ResidualAttnBlock::forward(const Tensor &inp) {
+    return fpga_forward_mlp(inp);
+}
+
+Tensor ResidualAttnBlock::fpga_forward_attn(const Tensor &inp)
+{
+
+    Tensor attn_out = attn_ln.forward(inp);
+
+    auto t = new Timer(&exec_time_ms_);
+    // Transfer input data
+    XHlsIpConfig::setInput(&mhsa_ip_inst, attn_out.data_ptr<void>(), attn_out.nbytes());
+    // Set controll registers
+    XHlsIpConfig::setParams(&mhsa_ip_inst);
+    // Execute HLS IP
+    XHlsIpConfig::start(&mhsa_ip_inst);
+    // Wait for IP finish
+    while (!XHlsIpConfig::isReady(&mhsa_ip_inst)) {
+        usleep(1000);
+    }
+    // Transfer output data
+    XHlsIpConfig::getOutput(&mhsa_ip_inst, attn_out.data_ptr<void>(), attn_out.nbytes());
+    delete t;
+    
+    attn_out = inp_res.forward(inp, attn_out);
+
+    Tensor out;
+    out = attn_res.forward(attn_out, mlp_proj.forward(gelu.forward(mlp_fc.forward(mlp_ln.forward(attn_out)))));
+
+    return out;
+}
+
+Tensor ResidualAttnBlock::fpga_forward_mlp(const Tensor &inp)
 {
     Tensor attn_out;
     attn_out = attn_ln.forward(inp);

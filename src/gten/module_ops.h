@@ -156,6 +156,39 @@ float dot_product(const Float16* vec_a, const Float16* vec_b, int vec_size) {
 }
 
 
+inline float dot_product_int8(const Int8* vec_a, const Int8* vec_b, int vec_size) {
+    int32_t acc = 0;
+    for (int i = 0; i < vec_size; ++i) {
+        acc += static_cast<int32_t>(vec_a[i]) * static_cast<int32_t>(vec_b[i]);
+    }
+    return static_cast<float>(acc);
+}
+
+
+inline Tensor dequant_to_fp16(const Tensor& src) {
+    GTEN_ASSERT(src.dtype() == kInt8, "Expected Int8 tensor for dequantization.");
+    Tensor dst;
+    if (src.ndims() == 1) {
+        dst = Tensor({src.size(0)}, kFloat16);
+    } else if (src.ndims() == 2) {
+        dst = Tensor({src.size(0), src.size(1)}, kFloat16);
+    } else {
+        dst = Tensor({src.size(0), src.size(1), src.size(2)}, kFloat16);
+    }
+
+    const int ne = src.numel();
+    const Int8* in_data = src.data_ptr<Int8>();
+    Float16* out_data = dst.data_ptr<Float16>();
+    const float scale = src.qscale();
+    const int32_t zp = src.qzero();
+    for (int i = 0; i < ne; ++i) {
+        float f = (static_cast<int32_t>(in_data[i]) - zp) * scale;
+        out_data[i] = fpcvt_stoh(f);
+    }
+    return dst;
+}
+
+
 void affine_proj_2d(const Tensor& a, const Tensor& b, const Tensor& bias, Tensor& cache, int cache_offset = 0)
 {
     const int nrows0 = a.size(0);

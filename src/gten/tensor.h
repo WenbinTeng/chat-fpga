@@ -56,6 +56,12 @@ public:
     // Get the number of bytes that an element in the tensor occupies.
     size_t itemsize() const noexcept {
         return (dtype_ == kFloat16) ? 2 : 4;
+        if (dtype_ == kInt8)
+            return 1;
+        else if (dtype_ == kFloat16)
+            return 2;
+        else
+            return 4;
     }
 
     int32_t ndims() const noexcept {
@@ -94,6 +100,14 @@ public:
 
     std::uint64_t fpga_addr_;
 
+    // Quantization parameters for Int8 tensors. Defaults keep float tensors neutral.
+    void set_qparams(float scale, int32_t zero_point) noexcept {
+        q_scale_ = scale;
+        q_zero_ = zero_point;
+    }
+    float qscale() const noexcept { return q_scale_; }
+    int32_t qzero() const noexcept { return q_zero_; }
+
 private:
     // shared ptr allows us to share the same data across many tensors.
     std::shared_ptr<uint8_t[]> data_;
@@ -108,6 +122,9 @@ private:
     int32_t ndims_{0};
     int32_t shape_[3]{0, 0, 0};
     Dtype dtype_{Dtype::Float32};
+
+    float q_scale_{1.0f};
+    int32_t q_zero_{0};
 
     int32_t numel_from_shape() const noexcept;
     void set_shape(std::initializer_list<int> shape);

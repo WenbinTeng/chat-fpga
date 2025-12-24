@@ -478,9 +478,6 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
 
     // Allocate address for input and output tensor
     const size_t tensor_size = 2*64*1024;
-    // auto block_in = a.allocate(tensor_size);
-    // auto block_temp = a.allocate(tensor_size);
-    // auto block_out = a.allocate(tensor_size);
     static uint64_t block_in = 0x8000'0000;
     static uint64_t block_temp = 0x8002'0000;
     static uint64_t block_out = 0x8004'0000;
@@ -503,10 +500,10 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.attn.query.weight);
         read_into_weight(checkpoint, block.attn.query.bias);
         #ifdef FPGA
-        block.attn.query.weight.fpga_addr_ = a.allocate(block.attn.query.weight.nbytes());
         block.attn.query.bias.fpga_addr_ = a.allocate(block.attn.query.bias.nbytes());
-        FpgaConfig::writeFpga(block.attn.query.weight.data_ptr<void>(), block.attn.query.weight.nbytes(), block.attn.query.weight.fpga_addr_);
+        block.attn.query.weight.fpga_addr_ = a.allocate(block.attn.query.weight.nbytes());
         FpgaConfig::writeFpga(block.attn.query.bias.data_ptr<void>(), block.attn.query.bias.nbytes(), block.attn.query.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.attn.query.weight.data_ptr<void>(), block.attn.query.weight.nbytes(), block.attn.query.weight.fpga_addr_);
         #endif
 
         // Key projection layer.
@@ -514,10 +511,10 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.attn.key.weight);
         read_into_weight(checkpoint, block.attn.key.bias);
         #ifdef FPGA
-        block.attn.key.weight.fpga_addr_ = a.allocate(block.attn.key.weight.nbytes());
         block.attn.key.bias.fpga_addr_ = a.allocate(block.attn.key.bias.nbytes());
-        FpgaConfig::writeFpga(block.attn.key.weight.data_ptr<void>(), block.attn.key.weight.nbytes(), block.attn.key.weight.fpga_addr_);
+        block.attn.key.weight.fpga_addr_ = a.allocate(block.attn.key.weight.nbytes());
         FpgaConfig::writeFpga(block.attn.key.bias.data_ptr<void>(), block.attn.key.bias.nbytes(), block.attn.key.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.attn.key.weight.data_ptr<void>(), block.attn.key.weight.nbytes(), block.attn.key.weight.fpga_addr_);
         #endif
 
         // Value projection layer.
@@ -525,10 +522,10 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.attn.value.weight);
         read_into_weight(checkpoint, block.attn.value.bias);
         #ifdef FPGA
-        block.attn.value.weight.fpga_addr_ = a.allocate(block.attn.value.weight.nbytes());
         block.attn.value.bias.fpga_addr_ = a.allocate(block.attn.value.bias.nbytes());
-        FpgaConfig::writeFpga(block.attn.value.weight.data_ptr<void>(), block.attn.value.weight.nbytes(), block.attn.value.weight.fpga_addr_);
+        block.attn.value.weight.fpga_addr_ = a.allocate(block.attn.value.weight.nbytes());
         FpgaConfig::writeFpga(block.attn.value.bias.data_ptr<void>(), block.attn.value.bias.nbytes(), block.attn.value.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.attn.value.weight.data_ptr<void>(), block.attn.value.weight.nbytes(), block.attn.value.weight.fpga_addr_);
         #endif
 
         // QKV_out projection layer.
@@ -536,10 +533,10 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.attn.qkv_proj.weight);
         read_into_weight(checkpoint, block.attn.qkv_proj.bias);
         #ifdef FPGA
-        block.attn.qkv_proj.weight.fpga_addr_ = a.allocate(block.attn.qkv_proj.weight.nbytes());
         block.attn.qkv_proj.bias.fpga_addr_ = a.allocate(block.attn.qkv_proj.bias.nbytes());
-        FpgaConfig::writeFpga(block.attn.qkv_proj.weight.data_ptr<void>(), block.attn.qkv_proj.weight.nbytes(), block.attn.qkv_proj.weight.fpga_addr_);
+        block.attn.qkv_proj.weight.fpga_addr_ = a.allocate(block.attn.qkv_proj.weight.nbytes());
         FpgaConfig::writeFpga(block.attn.qkv_proj.bias.data_ptr<void>(), block.attn.qkv_proj.bias.nbytes(), block.attn.qkv_proj.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.attn.qkv_proj.weight.data_ptr<void>(), block.attn.qkv_proj.weight.nbytes(), block.attn.qkv_proj.weight.fpga_addr_);
         #endif
 
         // Input layernorm.
@@ -547,10 +544,10 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.attn_ln.weight);
         read_into_weight(checkpoint, block.attn_ln.bias);
         #ifdef FPGA
-        block.attn_ln.weight.fpga_addr_ = a.allocate(block.attn_ln.weight.nbytes());
         block.attn_ln.bias.fpga_addr_ = a.allocate(block.attn_ln.bias.nbytes());
-        FpgaConfig::writeFpga(block.attn_ln.weight.data_ptr<void>(), block.attn_ln.weight.nbytes(), block.attn_ln.weight.fpga_addr_);
+        block.attn_ln.weight.fpga_addr_ = a.allocate(block.attn_ln.weight.nbytes());
         FpgaConfig::writeFpga(block.attn_ln.bias.data_ptr<void>(), block.attn_ln.bias.nbytes(), block.attn_ln.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.attn_ln.weight.data_ptr<void>(), block.attn_ln.weight.nbytes(), block.attn_ln.weight.fpga_addr_);
         #endif
 
         // MLP fully-connected layer.
@@ -558,10 +555,10 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.mlp_fc.weight);
         read_into_weight(checkpoint, block.mlp_fc.bias);
         #ifdef FPGA
-        block.mlp_fc.weight.fpga_addr_ = a.allocate(block.mlp_fc.weight.nbytes());
         block.mlp_fc.bias.fpga_addr_ = a.allocate(block.mlp_fc.bias.nbytes());
-        FpgaConfig::writeFpga(block.mlp_fc.weight.data_ptr<void>(), block.mlp_fc.weight.nbytes(), block.mlp_fc.weight.fpga_addr_);
+        block.mlp_fc.weight.fpga_addr_ = a.allocate(block.mlp_fc.weight.nbytes());
         FpgaConfig::writeFpga(block.mlp_fc.bias.data_ptr<void>(), block.mlp_fc.bias.nbytes(), block.mlp_fc.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.mlp_fc.weight.data_ptr<void>(), block.mlp_fc.weight.nbytes(), block.mlp_fc.weight.fpga_addr_);
         #endif
 
         // MLP out projection layer.
@@ -569,10 +566,10 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.mlp_proj.weight);
         read_into_weight(checkpoint, block.mlp_proj.bias);
         #ifdef FPGA
-        block.mlp_proj.weight.fpga_addr_ = a.allocate(block.mlp_proj.weight.nbytes());
         block.mlp_proj.bias.fpga_addr_ = a.allocate(block.mlp_proj.bias.nbytes());
-        FpgaConfig::writeFpga(block.mlp_proj.weight.data_ptr<void>(), block.mlp_proj.weight.nbytes(), block.mlp_proj.weight.fpga_addr_);
+        block.mlp_proj.weight.fpga_addr_ = a.allocate(block.mlp_proj.weight.nbytes());
         FpgaConfig::writeFpga(block.mlp_proj.bias.data_ptr<void>(), block.mlp_proj.bias.nbytes(), block.mlp_proj.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.mlp_proj.weight.data_ptr<void>(), block.mlp_proj.weight.nbytes(), block.mlp_proj.weight.fpga_addr_);
         #endif
         
         // MLP layernorm.
@@ -580,18 +577,18 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         read_into_weight(checkpoint, block.mlp_ln.weight);
         read_into_weight(checkpoint, block.mlp_ln.bias);
         #ifdef FPGA
-        block.mlp_ln.weight.fpga_addr_ = a.allocate(block.mlp_ln.weight.nbytes());
         block.mlp_ln.bias.fpga_addr_ = a.allocate(block.mlp_ln.bias.nbytes());
-        FpgaConfig::writeFpga(block.mlp_ln.weight.data_ptr<void>(), block.mlp_ln.weight.nbytes(), block.mlp_ln.weight.fpga_addr_);
+        block.mlp_ln.weight.fpga_addr_ = a.allocate(block.mlp_ln.weight.nbytes());
         FpgaConfig::writeFpga(block.mlp_ln.bias.data_ptr<void>(), block.mlp_ln.bias.nbytes(), block.mlp_ln.bias.fpga_addr_);
+        FpgaConfig::writeFpga(block.mlp_ln.weight.data_ptr<void>(), block.mlp_ln.weight.nbytes(), block.mlp_ln.weight.fpga_addr_);
         #endif
 
         // Set block ips
-        block.attn_ip_inst.controlBaseAddr = 0x1'0000'0000;
-        block.attn_ip_inst.params = {
+        block.mhsa_ip_inst.controlBaseAddr = 0x1'0000'0000;
+        block.mhsa_ip_inst.params = {
             &block_in,
-            &block.attn_ln.weight.fpga_addr_,
             &block.attn_ln.bias.fpga_addr_,
+            &block.attn_ln.weight.fpga_addr_,
             &block.attn.query.bias.fpga_addr_,
             &block.attn.query.weight.fpga_addr_,
             &block.attn.key.bias.fpga_addr_,
@@ -605,8 +602,8 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         block.ffn_ip_inst.controlBaseAddr = 0x1'0000'0000;
         block.ffn_ip_inst.params = {
             &block_temp,
-            // &block.mlp_ln.weight.fpga_addr_,
-            // &block.mlp_ln.bias.fpga_addr_,
+            &block.mlp_ln.bias.fpga_addr_,
+            &block.mlp_ln.weight.fpga_addr_,
             &block.mlp_fc.bias.fpga_addr_,
             &block.mlp_fc.weight.fpga_addr_,
             &block.mlp_proj.bias.fpga_addr_,

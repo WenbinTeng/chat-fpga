@@ -7,22 +7,26 @@ namespace gten
 {
 
 // SCALAR DATA TYPES.
+typedef int8_t  Int8;
 typedef int32_t Int32;
 typedef uint16_t Float16;
 typedef float Float32;
 
 // Allows data type information to be stored and passed around as variables because we
 // cannot do that with the types themselves.
-enum class Dtype { Int32, Float16, Float32 };
+enum class Dtype { Int8, Int32, Float16, Float32 };
 
 // Convenient shorthands for the enum class above.
+static Dtype kInt8 = Dtype::Int8;
 static Dtype kInt32 = Dtype::Int32;
 static Dtype kFloat16 = Dtype::Float16;
 static Dtype kFloat32 = Dtype::Float32;
 
 // Convert Dtype to a str for error reporting.
 static const char* dtype_str(Dtype dtype) {
-    if (dtype == Dtype::Int32)
+    if (dtype == Dtype::Int8)
+        return "Int8";
+    else if (dtype == Dtype::Int32)
         return "Int32";
     else if (dtype == Dtype::Float16)
         return "Float16";
