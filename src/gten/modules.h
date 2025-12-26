@@ -1,4 +1,6 @@
 #pragma once
+#include <bits/stdint-intn.h>
+#include <bits/stdint-uintn.h>
 #include <chrono>
 #include <iostream>
 #include <vector>

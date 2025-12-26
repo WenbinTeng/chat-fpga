@@ -8,6 +8,7 @@
 #include <random>
 
 #include "fpga/FpgaConfig.hpp"
+#include "gten/gten_types.h"
 #include "gten/tensor.h"
 #include "gten/modules.h"
 #include "tokenizer.h"
@@ -19,7 +20,7 @@ using namespace gten;
 struct InferenceOptions {
     std::string model_name {"minchatgpt-md"};
     std::string prompt {""};
-    int gen_tokens {500}; // number of tokens to generate.
+    int gen_tokens {64}; // number of tokens to generate.
     float temp {0.5f};
     bool debug_mode {false};
     bool greedy {false};
@@ -34,6 +35,7 @@ struct InferenceOptions {
     // }
 
     std::string get_model_path() const {
+        // return "models/Gpt2.fp16.gten";
         return std::string("models/") + model_name + ".gten";
     }
 
@@ -155,11 +157,33 @@ GPT2::GPT2(std::ifstream& checkpoint, const GPT2Config& config_, int max_ctx)
 
 Tensor GPT2::logits(const Tensor &inp)
 {
+    // Init FPGA buffer
     #ifdef FPGA
     auto zeros = new Float16[1][64][1024];
+    for (int i = 0; i < 64; i++) {
+        for (int j = 0; j < 1024; j++) {
+            zeros[0][i][j] = gten::fp32_to_fp16(0.0);
+        }
+    }
     FpgaConfig::writeFpga(reinterpret_cast<void*>(zeros), 2*64*1024, 0x8000'0000);
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(zeros), 2*64*1024, 0x8002'0000);
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(zeros), 2*64*1024, 0x8004'0000);
+    delete[] zeros;
+    const int maxCtx = 64;
+    auto mask = new int32_t[maxCtx][maxCtx];
+    int seqLen = inp.size(0);
+    for (int i = 0; i < maxCtx; i++)
+        for (int j = 0; j < maxCtx; j++)
+            if (i >= seqLen || j >= seqLen)
+                mask[i][j] = 0;
+            else if (j <= i)
+                mask[i][j] = 1;
+            else
+                mask[i][j] = 0;
+    FpgaConfig::writeFpga(reinterpret_cast<void*>(mask), 4*64*64, 0x8006'0000);
     #endif
 
+    // Get logits of next token
     Tensor logits = res_.forward(wte_.forward(inp), wpe_.forward(inp.size(0)));
     for (auto &block : blocks_)
         logits = block.forward(logits);
@@ -476,11 +500,14 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
     // Address allocator
     AddrAllocator a(0, 0x1'0000'0000);
 
+    #ifdef FPGA
     // Allocate address for input and output tensor
     const size_t tensor_size = 2*64*1024;
-    static uint64_t block_in = 0x8000'0000;
-    static uint64_t block_temp = 0x8002'0000;
-    static uint64_t block_out = 0x8004'0000;
+    static uint64_t block_in_addr = 0x8000'0000;
+    static uint64_t block_temp_addr = 0x8002'0000;
+    static uint64_t block_out_addr = 0x8004'0000;
+    static uint64_t attn_mask_addr = 0x8006'0000;
+    #endif
 
     // WTE
     read_layer_header(checkpoint);
@@ -583,33 +610,36 @@ void GPT2::load_from_checkpoint(std::ifstream& checkpoint)
         FpgaConfig::writeFpga(block.mlp_ln.weight.data_ptr<void>(), block.mlp_ln.weight.nbytes(), block.mlp_ln.weight.fpga_addr_);
         #endif
 
+        #ifdef FPGA
         // Set block ips
         block.mhsa_ip_inst.controlBaseAddr = 0x1'0000'0000;
         block.mhsa_ip_inst.params = {
-            &block_in,
-            &block.attn_ln.bias.fpga_addr_,
-            &block.attn_ln.weight.fpga_addr_,
+            &block_in_addr,
+            // &block.attn_ln.bias.fpga_addr_,
+            // &block.attn_ln.weight.fpga_addr_,
             &block.attn.query.bias.fpga_addr_,
             &block.attn.query.weight.fpga_addr_,
             &block.attn.key.bias.fpga_addr_,
             &block.attn.key.weight.fpga_addr_,
             &block.attn.value.bias.fpga_addr_,
             &block.attn.value.weight.fpga_addr_,
+            &attn_mask_addr,
             &block.attn.qkv_proj.bias.fpga_addr_,
             &block.attn.qkv_proj.weight.fpga_addr_,
-            &block_temp
+            &block_temp_addr
         };
         block.ffn_ip_inst.controlBaseAddr = 0x1'0000'0000;
         block.ffn_ip_inst.params = {
-            &block_temp,
-            &block.mlp_ln.bias.fpga_addr_,
-            &block.mlp_ln.weight.fpga_addr_,
+            &block_temp_addr,
+            // &block.mlp_ln.bias.fpga_addr_,
+            // &block.mlp_ln.weight.fpga_addr_,
             &block.mlp_fc.bias.fpga_addr_,
             &block.mlp_fc.weight.fpga_addr_,
             &block.mlp_proj.bias.fpga_addr_,
             &block.mlp_proj.weight.fpga_addr_,
-            &block_out
+            &block_out_addr
         };
+        #endif
     }
     
     // Block output Layernorm.

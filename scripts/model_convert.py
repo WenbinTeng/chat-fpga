@@ -110,6 +110,18 @@ class Transformer(nn.Module):
         #         or key.endswith("mlp.c_fc.weight")
         #         or key.endswith("mlp.c_proj.weight")):
         #         gpt_state[key] = gpt_state[key].transpose(0, 1)
+        
+        transpose_suffixes = (
+            "attn.c_attn.weight",
+            "attn.c_proj.weight",
+            "mlp.c_fc.weight",
+            "mlp.c_proj.weight",
+        )
+        
+        for k in list(gpt_state.keys()):
+            if k.endswith(transpose_suffixes):
+                gpt_state[k] = gpt_state[k].t().contiguous()
+        
         model.load_state_dict(gpt_state)
         return model
 

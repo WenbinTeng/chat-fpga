@@ -49,8 +49,10 @@ void XHlsIpConfig::setParams(XHlsIp *ipInstPtr) {
     for (auto param : ipInstPtr->params) {
         assert(param != nullptr);
         FpgaConfig::writeFpga(param, 8, ipInstPtr->controlBaseAddr + offset);
+        // std::cout << std::hex << *param << " " << ipInstPtr->controlBaseAddr + offset << std::endl;
         offset += 0xc;
     }
+    // std::cout << std::endl;
 }
 
 void XHlsIpConfig::getParams(XHlsIp *ipInstPtr) {

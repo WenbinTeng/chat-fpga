@@ -1,8 +1,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
 #include <ostream>
+#include <fstream>
 #include <thread>
 #include <unistd.h>
 #include <vector>
@@ -334,7 +336,7 @@ Tensor ResidualAttnBlock::forward(const Tensor &inp)
 // ---------------------------------------- 
 
 Tensor ResidualAttnBlock::forward(const Tensor &inp) {
-    return fpga_forward_mlp(inp);
+    return fpga_forward_attn(inp);
 }
 
 Tensor ResidualAttnBlock::fpga_forward_attn(const Tensor &inp)
@@ -350,13 +352,14 @@ Tensor ResidualAttnBlock::fpga_forward_attn(const Tensor &inp)
     // Execute HLS IP
     XHlsIpConfig::start(&mhsa_ip_inst);
     // Wait for IP finish
-    while (!XHlsIpConfig::isReady(&mhsa_ip_inst)) {
+    while (!XHlsIpConfig::isDone(&mhsa_ip_inst)) {
         usleep(1000);
     }
     // Transfer output data
     XHlsIpConfig::getOutput(&mhsa_ip_inst, attn_out.data_ptr<void>(), attn_out.nbytes());
     delete t;
-    
+
+    // attn_out = attn.forward(attn_out);
     attn_out = inp_res.forward(inp, attn_out);
 
     Tensor out;
@@ -384,7 +387,7 @@ Tensor ResidualAttnBlock::fpga_forward_mlp(const Tensor &inp)
     // Execute HLS IP
     XHlsIpConfig::start(&ffn_ip_inst);
     // Wait for IP finish
-    while (!XHlsIpConfig::isReady(&ffn_ip_inst)) {
+    while (!XHlsIpConfig::isDone(&ffn_ip_inst)) {
         usleep(1000);
     }
     // Transfer output data

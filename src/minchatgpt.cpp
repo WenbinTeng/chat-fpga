@@ -125,8 +125,7 @@ int main(int argc, char const *argv[])
         if (prompt == "q")
             break;
 
-        options.prompt = "Below is an instruction that describes a task, paired with an input that provides further context."
-                          " Write a response that appropriately completes the request.\n### Instruction: "
+        options.prompt = " Write a response that appropriately completes the request.\n### Instruction: "
                           + prompt + "\n### Input: \n### Response: ";
         // options.prompt = prompt;
 
