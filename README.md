@@ -10,7 +10,7 @@ The frontend basically relays on the [minchatgpt.cpp](https://github.com/iangito
 
 ### Demo
 
-(Demo content to be added)
+![](images/demo.gif)
 
 
 
